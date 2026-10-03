@@ -1,10 +1,17 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/ui/theme';
+import { useEnforcement } from '../src/features/enforcement';
 
 export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
+  const { syncRulesToBlocker } = useEnforcement();
+
+  useEffect(() => {
+    void syncRulesToBlocker();
+  }, [syncRulesToBlocker]);
   return (
     <>
       <StatusBar style="dark" />
@@ -49,6 +56,14 @@ export default function RootLayout() {
           options={{
             title: 'Edit Rule',
             presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="blocked"
+          options={{
+            title: 'Mindful Pause',
+            headerShown: false,
+            presentation: 'fullScreenModal',
           }}
         />
       </Stack>

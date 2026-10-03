@@ -6,8 +6,16 @@ import {
   setBlockedApps,
   startMonitoring,
   stopMonitoring,
+  configureAndroid,
+  drainPendingIntercepts,
 } from 'expo-app-blocker';
-import type { BlockerAdapter, InstalledAppInfo, PermissionState } from './interface';
+import type {
+  BlockerAdapter,
+  InstalledAppInfo,
+  PermissionState,
+  OverlayConfig,
+  InterceptEvent,
+} from './interface';
 import { logger } from '@/lib/logger';
 
 /**
@@ -75,6 +83,31 @@ export class ExpoAppBlockerAdapter implements BlockerAdapter {
       setBlockedApps([...packages]);
     } catch (error) {
       logger.error('Failed to configure blocked packages on native module', error);
+    }
+  }
+
+  async configureOverlay(config: OverlayConfig): Promise<void> {
+    try {
+      configureAndroid({
+        overlayTitle: config.title,
+        overlayText: config.text,
+        overlayBackgroundColor: config.backgroundColor,
+      });
+    } catch (error) {
+      logger.error('Failed to configure Android overlay', error);
+    }
+  }
+
+  async drainPendingIntercepts(): Promise<readonly InterceptEvent[]> {
+    try {
+      const pending = drainPendingIntercepts();
+      return pending.map((item) => ({
+        appName: item.appName,
+        interceptedAt: item.interceptedAt,
+      }));
+    } catch (error) {
+      logger.error('Failed to drain pending intercepts from native module', error);
+      return [];
     }
   }
 
