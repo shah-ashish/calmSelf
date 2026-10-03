@@ -376,5 +376,41 @@ describe('RulesController (Home Screen State, Asymmetric Toggling, Rollover)', (
       }
     });
   });
+
+  describe('getUninstalledApps', () => {
+    it('returns packages configured in rules that are not in installed packages list', async () => {
+      await ruleRepo.save(baseRule); // appIds: ['com.instagram.android']
+      await ruleRepo.save({
+        id: 'rule-youtube',
+        messages: ['Focus'],
+        limitMinutes: 20,
+        delaySeconds: 5,
+        blockMinutes: 30,
+        appIds: ['com.google.android.youtube', 'com.reddit.frontpage'],
+        enabled: true,
+        schemaVersion: 1,
+      });
+      await controller.load();
+
+      // Only YouTube is installed; Instagram and Reddit were uninstalled
+      const installed = ['com.google.android.youtube', 'com.android.chrome'];
+      const uninstalled = controller.getUninstalledApps(installed);
+
+      expect(uninstalled).toContain('com.instagram.android');
+      expect(uninstalled).toContain('com.reddit.frontpage');
+      expect(uninstalled).not.toContain('com.google.android.youtube');
+      expect(uninstalled.length).toBe(2);
+    });
+
+    it('returns empty array when all configured apps are installed', async () => {
+      await ruleRepo.save(baseRule);
+      await controller.load();
+
+      const installed = ['com.instagram.android', 'com.android.chrome'];
+      const uninstalled = controller.getUninstalledApps(installed);
+
+      expect(uninstalled).toEqual([]);
+    });
+  });
 });
 

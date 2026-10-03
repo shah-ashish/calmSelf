@@ -198,4 +198,55 @@ describe('EnforcementController', () => {
       expect(secondCount).toBe(0);
     });
   });
+
+  describe('healthCheck', () => {
+    it('reports healthy when permissions are granted and rules are synced', async () => {
+      await ruleRepo.save(ruleInstagram);
+      blocker.setAllPermissions(true);
+      await controller.syncRulesToBlocker();
+
+      const result = await controller.healthCheck();
+
+      expect(result.isHealthy).toBe(true);
+      expect(result.issues).toEqual([]);
+      expect(result.repaired).toBe(false);
+    });
+
+    it('detects missing permissions and reports them as issues', async () => {
+      await ruleRepo.save(ruleInstagram);
+      blocker.setAllPermissions(false);
+
+      const result = await controller.healthCheck();
+
+      expect(result.isHealthy).toBe(false);
+      expect(result.issues).toContain('Overlay permission not granted');
+      expect(result.issues).toContain('Usage access permission not granted');
+    });
+
+    it('self-heals and repairs out-of-sync state when rules changed without sync', async () => {
+      await ruleRepo.save(ruleInstagram);
+      blocker.setAllPermissions(true);
+
+      // Blocker was never synced, so packages and service are out of sync
+      const result = await controller.healthCheck();
+
+      expect(result.isHealthy).toBe(true);
+      expect(result.repaired).toBe(true);
+      expect(controller.getState().monitoringActive).toBe(true);
+      expect(controller.getState().blockedPackages).toEqual(['com.instagram.android']);
+    });
+
+    it('drains pending intercepts as part of the health check', async () => {
+      blocker.queueIntercept({
+        appName: 'Instagram',
+        interceptedAt: clock.now(),
+      });
+      blocker.setAllPermissions(true);
+      await controller.syncRulesToBlocker();
+
+      await controller.healthCheck();
+
+      expect(controller.getState().totalIntercepts).toBe(1);
+    });
+  });
 });

@@ -156,6 +156,56 @@ describe('Domain: RuleEngine', () => {
       });
     });
 
+    it('allows app open with mindful message after same-day cooldown lock has expired (prevents infinite lock loop)', () => {
+      // Cooldown was served today (expired 5 minutes ago)
+      const pastLock = clock.now() - 5 * 60 * 1000;
+      const state: AppState = {
+        appId: 'com.instagram.android',
+        ruleId: testRule.id,
+        usedTodaySeconds: 2000, // over 1800s limit
+        usageDate: clock.todayDateString(), // same day!
+        lockedUntil: pastLock,
+      };
+
+      const decision = evaluateEnforcement(testRule, state, clock.now(), {
+        randomSelector: () => 0,
+      });
+
+      // Instead of an infinite re-locking loop, the user is allowed to proceed through mindful message
+      expect(decision).toEqual({
+        type: 'show_message',
+        message: 'Focus on your goals!',
+        delaySeconds: 10,
+      });
+    });
+
+    it('clears carried-over expired lock when under limit on new day and allows subsequent lock', () => {
+      // Carried-over lock that expired earlier today, but usedTodaySeconds is only 5 min
+      const pastLock = clock.now() - 30 * 60 * 1000;
+      const state: AppState = {
+        appId: 'com.instagram.android',
+        ruleId: testRule.id,
+        usedTodaySeconds: 300, // 5 min
+        usageDate: clock.todayDateString(),
+        lockedUntil: pastLock,
+      };
+
+      // Under limit -> show_message
+      const decision1 = evaluateEnforcement(testRule, state, clock.now(), {
+        randomSelector: () => 0,
+      });
+      expect(decision1.type).toBe('show_message');
+
+      // Once user reaches limit today with cleared lock -> locks properly
+      const atLimitState: AppState = {
+        ...state,
+        usedTodaySeconds: 1800,
+        lockedUntil: undefined,
+      };
+      const decision2 = evaluateEnforcement(testRule, atLimitState, clock.now());
+      expect(decision2.type).toBe('lock');
+    });
+
     it('enforces independent state: Instagram at limit does NOT affect YouTube', () => {
       // Instagram used 30 min (at limit)
       const instagramState: AppState = {

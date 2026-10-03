@@ -16,3 +16,9 @@ export interface InterceptEvaluation {
   readonly appName: string;
   readonly packageName: string;
 }
+
+export interface HealthCheckResult {
+  readonly isHealthy: boolean;
+  readonly issues: readonly string[];
+  readonly repaired: boolean;
+}

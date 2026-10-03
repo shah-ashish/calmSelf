@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
-import type { EnforcementState, InterceptEvaluation } from './types';
+import type { EnforcementState, InterceptEvaluation, HealthCheckResult } from './types';
 import type { EnforcementController } from './EnforcementController';
 import { getDefaultEnforcementController } from './defaultRepositories';
 
@@ -9,6 +9,7 @@ export interface UseEnforcementResult {
   readonly evaluateAppOpen: (packageName: string) => Promise<InterceptEvaluation>;
   readonly recordAppUsage: (packageName: string, elapsedSeconds: number) => Promise<unknown>;
   readonly drainIntercepts: () => Promise<number>;
+  readonly healthCheck: () => Promise<HealthCheckResult>;
 }
 
 export function useEnforcement(customController?: EnforcementController): UseEnforcementResult {
@@ -44,11 +45,16 @@ export function useEnforcement(customController?: EnforcementController): UseEnf
     return await controller.drainIntercepts();
   }, [controller]);
 
+  const healthCheck = useCallback(async () => {
+    return await controller.healthCheck();
+  }, [controller]);
+
   return {
     state,
     syncRulesToBlocker,
     evaluateAppOpen,
     recordAppUsage,
     drainIntercepts,
+    healthCheck,
   };
 }
