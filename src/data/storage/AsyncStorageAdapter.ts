@@ -11,10 +11,54 @@ export interface AsyncStorageBackend {
 }
 
 /**
+ * Checks whether native AsyncStorage or PlatformLocalStorage is linked in the native binary
+ * BEFORE attempting to require @react-native-async-storage/async-storage.
+ * This prevents the library from throwing fatal uncaught exceptions at require time in builds
+ * where the native module is unlinked (such as Expo Go or development builds prior to M3).
+ */
+function isNativeStorageAvailable(): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const rn = require('react-native');
+    const TurboModuleRegistry = rn?.TurboModuleRegistry;
+    const NativeModules = rn?.NativeModules;
+
+    // In plain Node or test environments where NativeModules is empty/mocked,
+    // allow require() to proceed so Jest mocks are used.
+    if (!TurboModuleRegistry && !NativeModules) {
+      return true;
+    }
+
+    // In Jest or tests, if NativeModules is defined but empty, also allow require if in test env
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+      return true;
+    }
+
+    const hasTurbo = Boolean(
+      TurboModuleRegistry?.get?.('PlatformLocalStorage') ||
+      TurboModuleRegistry?.get?.('RNC_AsyncSQLiteDBStorage') ||
+      TurboModuleRegistry?.get?.('RNCAsyncStorage')
+    );
+
+    const hasNative = Boolean(
+      NativeModules?.['PlatformLocalStorage'] ||
+      NativeModules?.['RNC_AsyncSQLiteDBStorage'] ||
+      NativeModules?.['RNCAsyncStorage'] ||
+      NativeModules?.['AsyncLocalStorage'] ||
+      NativeModules?.['AsyncSQLiteDBStorage']
+    );
+
+    return hasTurbo || hasNative;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Production storage adapter backed by @react-native-async-storage/async-storage.
  * Highly resilient: if the native AsyncStorage module is not linked in the current APK
- * (e.g. running in Expo Go or an older dev build), it logs a warning and gracefully
- * falls back to InMemoryStorageAdapter without crashing the app.
+ * (e.g. running in Expo Go or an older dev build), it quietly falls back to InMemoryStorageAdapter
+ * without throwing errors or showing RedBox popups.
  */
 export class AsyncStorageAdapter implements StorageAdapter {
   private backend: StorageAdapter | AsyncStorageBackend;
@@ -23,6 +67,14 @@ export class AsyncStorageAdapter implements StorageAdapter {
   constructor(customBackend?: AsyncStorageBackend) {
     if (customBackend) {
       this.backend = customBackend;
+      return;
+    }
+
+    if (!isNativeStorageAvailable()) {
+      logger.info(
+        'AsyncStorage native module not present in current app binary. Gracefully using in-memory storage fallback.'
+      );
+      this.backend = new InMemoryStorageAdapter();
       return;
     }
 
@@ -37,7 +89,7 @@ export class AsyncStorageAdapter implements StorageAdapter {
       }
     } catch (err) {
       logger.warn(
-        'AsyncStorage native module is unavailable in this build. Falling back to in-memory storage.',
+        'AsyncStorage native module failed to load. Falling back to in-memory storage.',
         { error: err }
       );
       this.backend = new InMemoryStorageAdapter();
