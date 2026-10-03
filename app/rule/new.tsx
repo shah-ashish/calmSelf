@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radii, shadows, spacing, typography } from '@/ui/theme';
+import { colors, radii, shadows, spacing, typography } from '../../src/ui/theme';
 
 export default function NewRuleScreen() {
   return (

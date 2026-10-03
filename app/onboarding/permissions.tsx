@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, radii, shadows, spacing, typography } from '@/ui/theme';
+import { colors, radii, shadows, spacing, typography } from '../../src/ui/theme';
 
 export default function PermissionsScreen() {
   const router = useRouter();
