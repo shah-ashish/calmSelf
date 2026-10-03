@@ -215,4 +215,166 @@ describe('RulesController (Home Screen State, Asymmetric Toggling, Rollover)', (
     const undoRes = await controller.undoPending('ghost-rule');
     expect(undoRes.ok).toBe(false);
   });
+
+  describe('createRule, updateRule, getRuleById, getAssignedApps', () => {
+    it('getRuleById returns rule if present or undefined', async () => {
+      await ruleRepo.save(baseRule);
+      await controller.load();
+
+      expect(controller.getRuleById(baseRule.id)).toEqual(baseRule);
+      expect(controller.getRuleById('non-existent')).toBeUndefined();
+    });
+
+    it('getAssignedApps returns map of packageId to ruleId and supports exclusion', async () => {
+      const secondRule: Rule = {
+        id: 'rule-youtube',
+        messages: ['Mindful youtube'],
+        limitMinutes: 45,
+        delaySeconds: 5,
+        blockMinutes: 30,
+        appIds: ['com.google.android.youtube'],
+        enabled: true,
+        schemaVersion: 1,
+      };
+      await ruleRepo.save(baseRule);
+      await ruleRepo.save(secondRule);
+      await controller.load();
+
+      const allAssigned = controller.getAssignedApps();
+      expect(allAssigned.get('com.instagram.android')).toBe(baseRule.id);
+      expect(allAssigned.get('com.google.android.youtube')).toBe(secondRule.id);
+
+      // Exclude baseRule
+      const excludingFirst = controller.getAssignedApps(baseRule.id);
+      expect(excludingFirst.has('com.instagram.android')).toBe(false);
+      expect(excludingFirst.get('com.google.android.youtube')).toBe(secondRule.id);
+    });
+
+    it('createRule fails if validation fails', async () => {
+      await controller.load();
+
+      // Empty messages
+      const res = await controller.createRule({
+        messages: [],
+        limitMinutes: 30,
+        delaySeconds: 10,
+        blockMinutes: 60,
+        appIds: ['com.twitter.android'],
+      });
+
+      expect(res.ok).toBe(false);
+    });
+
+    it('createRule fails if app is already assigned to another rule (Business Rule 1)', async () => {
+      await ruleRepo.save(baseRule);
+      await controller.load();
+
+      const res = await controller.createRule({
+        messages: ['Test message'],
+        limitMinutes: 30,
+        delaySeconds: 10,
+        blockMinutes: 60,
+        appIds: ['com.instagram.android'], // Conflict!
+      });
+
+      expect(res.ok).toBe(false);
+    });
+
+    it('createRule succeeds, saves rule and initializes AppState', async () => {
+      await controller.load();
+
+      const res = await controller.createRule({
+        messages: ['Take a break'],
+        limitMinutes: 20,
+        delaySeconds: 15,
+        blockMinutes: 30,
+        appIds: ['com.twitter.android'],
+      });
+
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.value.id).toBeDefined();
+        expect(res.value.messages).toEqual(['Take a break']);
+        expect(res.value.limitMinutes).toBe(20);
+        expect(res.value.delaySeconds).toBe(15);
+        expect(res.value.blockMinutes).toBe(30);
+        expect(res.value.appIds).toEqual(['com.twitter.android']);
+      }
+
+      const state = controller.getState();
+      expect(state.rules).toHaveLength(1);
+      expect(state.appStates['com.twitter.android']).toBeDefined();
+      expect(state.appStates['com.twitter.android'].usedTodaySeconds).toBe(0);
+    });
+
+    it('updateRule fails if rule does not exist', async () => {
+      await controller.load();
+
+      const res = await controller.updateRule('non-existent', {
+        messages: ['New message'],
+        limitMinutes: 30,
+        delaySeconds: 10,
+        blockMinutes: 60,
+        appIds: ['com.twitter.android'],
+      });
+
+      expect(res.ok).toBe(false);
+    });
+
+    it('updateRule applies tightening changes immediately', async () => {
+      await ruleRepo.save(baseRule);
+      await controller.load();
+
+      // Tightening: limit 30 -> 15, delay 10 -> 20, block 60 -> 90, added twitter
+      const res = await controller.updateRule(baseRule.id, {
+        messages: ['Updated prompt'],
+        limitMinutes: 15,
+        delaySeconds: 20,
+        blockMinutes: 90,
+        appIds: ['com.instagram.android', 'com.twitter.android'],
+      });
+
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.value.limitMinutes).toBe(15);
+        expect(res.value.delaySeconds).toBe(20);
+        expect(res.value.blockMinutes).toBe(90);
+        expect(res.value.appIds).toEqual(['com.instagram.android', 'com.twitter.android']);
+        expect(res.value.pendingChange).toBeUndefined();
+      }
+
+      const state = controller.getState();
+      expect(state.rules[0].limitMinutes).toBe(15);
+      expect(state.appStates['com.twitter.android']).toBeDefined();
+    });
+
+    it('updateRule stages loosening changes as pending until next midnight', async () => {
+      await ruleRepo.save(baseRule);
+      await controller.load();
+
+      // Loosening: limit 30 -> 60, delay 10 -> 0, block 60 -> 15
+      const res = await controller.updateRule(baseRule.id, {
+        messages: baseRule.messages,
+        limitMinutes: 60,
+        delaySeconds: 0,
+        blockMinutes: 15,
+        appIds: baseRule.appIds,
+      });
+
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        // Immediate values remain original
+        expect(res.value.limitMinutes).toBe(30);
+        expect(res.value.delaySeconds).toBe(10);
+        expect(res.value.blockMinutes).toBe(60);
+
+        // Pending change contains the relaxed values
+        expect(res.value.pendingChange).toBeDefined();
+        expect(res.value.pendingChange?.patch.limitMinutes).toBe(60);
+        expect(res.value.pendingChange?.patch.delaySeconds).toBe(0);
+        expect(res.value.pendingChange?.patch.blockMinutes).toBe(15);
+      }
+    });
+  });
 });
+

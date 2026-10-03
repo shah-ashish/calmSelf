@@ -18,3 +18,5 @@ export { RuleCard } from './components/RuleCard';
 export type { RuleCardProps } from './components/RuleCard';
 export { EmptyRulesView } from './components/EmptyRulesView';
 export type { EmptyRulesViewProps } from './components/EmptyRulesView';
+export { RuleForm } from './components/RuleForm';
+export type { RuleFormProps } from './components/RuleForm';

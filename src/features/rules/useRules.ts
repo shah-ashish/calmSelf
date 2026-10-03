@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useSyncExternalStore } from 'react';
 import type { Rule, AppState } from '@/domain/types';
+import type { RuleInput, RuleValidationError } from '@/domain/validation';
 import type { Result } from '@/lib/result';
 import { getDefaultRulesController } from './defaultRepositories';
 import { RulesController } from './RulesController';
@@ -13,6 +14,15 @@ export interface UseRulesResult {
   readonly toggleRule: (ruleId: string) => Promise<Result<Rule>>;
   readonly undoPending: (ruleId: string) => Promise<Result<Rule>>;
   readonly deleteRule: (ruleId: string) => Promise<Result<void>>;
+  readonly createRule: (
+    input: RuleInput
+  ) => Promise<Result<Rule, readonly RuleValidationError[] | Error>>;
+  readonly updateRule: (
+    ruleId: string,
+    input: RuleInput
+  ) => Promise<Result<Rule, readonly RuleValidationError[] | Error>>;
+  readonly getRuleById: (ruleId: string) => Rule | undefined;
+  readonly getAssignedApps: (excludeRuleId?: string) => Map<string, string>;
 }
 
 export function useRules(customController?: RulesController): UseRulesResult {
@@ -56,6 +66,34 @@ export function useRules(customController?: RulesController): UseRulesResult {
     [controller]
   );
 
+  const createRule = useCallback(
+    async (input: RuleInput) => {
+      return await controller.createRule(input);
+    },
+    [controller]
+  );
+
+  const updateRule = useCallback(
+    async (ruleId: string, input: RuleInput) => {
+      return await controller.updateRule(ruleId, input);
+    },
+    [controller]
+  );
+
+  const getRuleById = useCallback(
+    (ruleId: string) => {
+      return controller.getRuleById(ruleId);
+    },
+    [controller]
+  );
+
+  const getAssignedApps = useCallback(
+    (excludeRuleId?: string) => {
+      return controller.getAssignedApps(excludeRuleId);
+    },
+    [controller]
+  );
+
   return {
     rules: state.rules,
     appStates: state.appStates,
@@ -65,5 +103,9 @@ export function useRules(customController?: RulesController): UseRulesResult {
     toggleRule,
     undoPending,
     deleteRule,
+    createRule,
+    updateRule,
+    getRuleById,
+    getAssignedApps,
   };
 }

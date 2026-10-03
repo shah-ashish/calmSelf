@@ -1,15 +1,62 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, radii, shadows, spacing, typography } from '../../src/ui/theme';
+import React, { useState, useMemo } from 'react';
+import { StyleSheet, View, Alert } from 'react-native';
+import { router } from 'expo-router';
+import { useRules, RuleForm } from '../../src/features/rules';
+import type { RuleInput, RuleValidationError } from '../../src/domain/validation';
+import { colors } from '../../src/ui/theme';
 
 export default function NewRuleScreen() {
+  const { createRule, getAssignedApps } = useRules();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const assignedAppsMap = useMemo(() => getAssignedApps(), [getAssignedApps]);
+
+  const handleSave = async (input: RuleInput): Promise<boolean> => {
+    setIsSubmitting(true);
+    try {
+      const result = await createRule(input);
+      if (!result.ok) {
+        let errorMsg = 'Unable to save rule.';
+        if (Array.isArray(result.error)) {
+          errorMsg = (result.error as readonly RuleValidationError[])
+            .map((e) => e.message)
+            .join('\n');
+        } else if (result.error instanceof Error) {
+          errorMsg = result.error.message;
+        }
+        Alert.alert('Unable to Save Rule', errorMsg);
+        setIsSubmitting(false);
+        return false;
+      }
+
+      router.replace('/');
+      return true;
+    } catch (err) {
+      Alert.alert(
+        'Unexpected Error',
+        err instanceof Error ? err.message : 'An unknown error occurred while saving the rule.'
+      );
+      setIsSubmitting(false);
+      return false;
+    }
+  };
+
+  const handleCancel = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Create Protection Rule</Text>
-        <Text style={styles.subtitle}>
-          Rule editor and configuration form will be connected in Milestone 6.
-        </Text>
-      </View>
+      <RuleForm
+        assignedAppsMap={assignedAppsMap}
+        onSave={handleSave}
+        onCancel={handleCancel}
+        isSubmitting={isSubmitting}
+      />
     </View>
   );
 }
@@ -18,19 +65,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-    ...shadows.md,
-  },
-  title: {
-    ...typography.h2,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.bodyMuted,
   },
 });
