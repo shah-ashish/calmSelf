@@ -1,15 +1,14 @@
 {
   "expo": {
-    "name": "calm-self-app",
-    "slug": "calm-self-app",
+    "name": "Calm Self",
+    "slug": "calm-self",
+    "scheme": "calmself",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
+      "package": "com.calmself.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -18,8 +17,53 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-dev-client",
+      "expo-app-blocker"
+    ],
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.example.calm-self.ShieldConfiguration",
+                  "targetName": "ShieldConfiguration",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.expo.app-blocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.example.calm-self.ShieldAction",
+                  "targetName": "ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.expo.app-blocker"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.example.calm-self.DeviceActivityMonitor",
+                  "targetName": "DeviceActivityMonitor",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.expo.app-blocker"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "c05d15b6-6664-4341-b570-c38de492c38c"
+      }
+    },
+    "owner": "ashish-shah"
   }
 }
