@@ -79,7 +79,9 @@ Source code inspected from the unpacked `expo-app-blocker@0.1.77` package:
 
 ---
 
-## 5. Next Steps (EAS Build Execution)
-1. User logs into EAS via `npx eas login`.
-2. Run `npx eas build --profile development --platform android` to generate the test APK for physical phone verification.
-3. Install APK on physical Android device and verify permission prompts, intercept latency, and background persistence.
+## 5. EAS Development Build Artifact
+* **Build Status**: FINISHED (Success)
+* **Build ID**: `e1d1dbcf-d770-4c54-861f-666cf29156dd`
+* **Dashboard**: [https://expo.dev/accounts/ashish-shah/projects/calm-self/builds/e1d1dbcf-d770-4c54-861f-666cf29156dd](https://expo.dev/accounts/ashish-shah/projects/calm-self/builds/e1d1dbcf-d770-4c54-861f-666cf29156dd)
+* **Direct APK Download**: [https://expo.dev/artifacts/eas/Zq8BGuy4-05vbCPMQrS1SdA1FiHrVh15G7OmhBSKd5k.apk](https://expo.dev/artifacts/eas/Zq8BGuy4-05vbCPMQrS1SdA1FiHrVh15G7OmhBSKd5k.apk)
+

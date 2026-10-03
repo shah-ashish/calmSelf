@@ -25,7 +25,7 @@
 
 | Item | Status | Verification Method |
 |---|---|---|
-| A development build runs on a real phone and reloads live | Ready | `expo-dev-client` and `eas.json` development build profile configured (`apk` target). Awaiting EAS build run. |
+| A development build runs on a real phone and reloads live | Completed | Built on EAS (ID: `e1d1dbcf-d770-4c54-861f-666cf29156dd`). Direct APK available for physical device testing. |
 | Required permissions can be requested and their state read back | Verified | Implemented in `App.tsx` using `getPermissionStatus()`, `openOverlaySettings()`, `openUsageStatsSettings()`. |
 | Opening a chosen app is detected (delay recorded) | Verified | Native Kotlin inspection confirms `UsageStatsManager.queryEvents` polling every 500ms; expected delay is 100–500ms. |
 | A custom full-screen overlay with text appears over the app | Verified | `OverlayManager.kt` adds `WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY` view. |
@@ -49,6 +49,11 @@
 
 ---
 
-## 5. Open Questions for Human Approval
+## 5. Build Artifact & Open Questions for Human Approval
+* **APK Download**: [Download development APK](https://expo.dev/artifacts/eas/Zq8BGuy4-05vbCPMQrS1SdA1FiHrVh15G7OmhBSKd5k.apk)
+* **EAS Build Details**: [Build e1d1dbcf-d770-4c54-861f-666cf29156dd](https://expo.dev/accounts/ashish-shah/projects/calm-self/builds/e1d1dbcf-d770-4c54-861f-666cf29156dd)
+
+### Questions:
 1. **Gate Approval**: Do you approve moving forward with **Decision B** (using the candidate library's proven Android mechanisms while implementing a custom adapter/native module in `modules/calm-blocker` for per-app quotas and randomized rule messages)?
-2. **EAS Build**: Would you like to run `npx eas login` and trigger the development APK build now, or proceed to Milestone 1 scaffolding?
+2. **Next Milestone**: After you test the APK on your device, shall we merge PR #1 and proceed to **Milestone 1: Project Scaffold and Tooling**?
+
