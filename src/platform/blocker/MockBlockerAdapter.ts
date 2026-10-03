@@ -1,4 +1,10 @@
-import type { BlockerAdapter, InstalledAppInfo, PermissionState } from './interface';
+import type {
+  BlockerAdapter,
+  InstalledAppInfo,
+  PermissionState,
+  OverlayConfig,
+  InterceptEvent,
+} from './interface';
 
 /**
  * Mock Blocker Adapter for Node & Jest tests and offline simulation.
@@ -21,6 +27,8 @@ export class MockBlockerAdapter implements BlockerAdapter {
   public serviceRunning: boolean = false;
   public openedOverlaySettingsCount: number = 0;
   public openedUsageSettingsCount: number = 0;
+  public configuredOverlay: OverlayConfig = {};
+  public pendingIntercepts: InterceptEvent[] = [];
 
   async checkPermissions(): Promise<PermissionState> {
     return { ...this.permissions };
@@ -40,6 +48,16 @@ export class MockBlockerAdapter implements BlockerAdapter {
 
   async setBlockedPackages(packages: readonly string[]): Promise<void> {
     this.blockedPackages = [...packages];
+  }
+
+  async configureOverlay(config: OverlayConfig): Promise<void> {
+    this.configuredOverlay = { ...config };
+  }
+
+  async drainPendingIntercepts(): Promise<readonly InterceptEvent[]> {
+    const drained = [...this.pendingIntercepts];
+    this.pendingIntercepts = [];
+    return drained;
   }
 
   async startService(): Promise<void> {
@@ -65,5 +83,9 @@ export class MockBlockerAdapter implements BlockerAdapter {
       usageAccessGranted: granted,
       notificationsGranted: granted,
     };
+  }
+
+  queueIntercept(event: InterceptEvent): void {
+    this.pendingIntercepts.push(event);
   }
 }

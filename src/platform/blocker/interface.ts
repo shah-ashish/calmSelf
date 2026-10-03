@@ -15,12 +15,25 @@ export interface PermissionState {
   readonly notificationsGranted: boolean;
 }
 
+export interface InterceptEvent {
+  readonly appName: string | null;
+  readonly interceptedAt: number;
+}
+
+export interface OverlayConfig {
+  readonly title?: string;
+  readonly text?: string;
+  readonly backgroundColor?: string;
+}
+
 export interface BlockerAdapter {
   checkPermissions(): Promise<PermissionState>;
   openOverlaySettings(): void;
   openUsageAccessSettings(): void;
   getInstalledApps(): Promise<readonly InstalledAppInfo[]>;
   setBlockedPackages(packages: readonly string[]): Promise<void>;
+  configureOverlay(config: OverlayConfig): Promise<void>;
+  drainPendingIntercepts(): Promise<readonly InterceptEvent[]>;
   startService(): Promise<void>;
   stopService(): Promise<void>;
 }
