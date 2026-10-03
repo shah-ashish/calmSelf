@@ -6,6 +6,13 @@ import type { RulesState, RulesChangeListener } from './types';
 import type { Result } from '@/lib/result';
 import { ok, err } from '@/lib/result';
 import { logger } from '@/lib/logger';
+import { generateId } from '@/lib/id';
+import { STORAGE } from '@/config/constants';
+import {
+  validateRuleInput,
+  type RuleInput,
+  type RuleValidationError,
+} from '@/domain/validation';
 
 export class RulesController {
   private state: RulesState = {
@@ -210,5 +217,136 @@ export class RulesController {
     };
     this.notify();
     return ok(undefined);
+  }
+
+  /**
+   * Retrieves a rule by its ID.
+   */
+  getRuleById(id: string): Rule | undefined {
+    return this.state.rules.find((r) => r.id === id);
+  }
+
+  /**
+   * Returns a map of packageId -> ruleId for all currently assigned apps,
+   * optionally excluding a specific rule (useful when editing an existing rule).
+   */
+  getAssignedApps(excludeRuleId?: string): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const rule of this.state.rules) {
+      if (excludeRuleId && rule.id === excludeRuleId) continue;
+      for (const appId of rule.appIds) {
+        map.set(appId, rule.id);
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Creates a new rule, enforcing validation and Business Rule 1 (1 app <= 1 rule).
+   * Automatically initializes AppState records for newly protected apps.
+   */
+  async createRule(
+    input: RuleInput
+  ): Promise<Result<Rule, readonly RuleValidationError[] | Error>> {
+    const validation = validateRuleInput(input, this.state.rules);
+    if (!validation.ok) {
+      return err(validation.error);
+    }
+
+    const validated = validation.value;
+    const newRule: Rule = {
+      id: generateId('rule'),
+      messages: validated.messages,
+      limitMinutes: validated.limitMinutes,
+      delaySeconds: validated.delaySeconds,
+      blockMinutes: validated.blockMinutes,
+      appIds: validated.appIds,
+      enabled: validated.enabled ?? true,
+      schemaVersion: STORAGE.CURRENT_SCHEMA_VERSION,
+    };
+
+    const saveResult = await this.ruleRepo.save(newRule);
+    if (!saveResult.ok) {
+      return err(saveResult.error);
+    }
+
+    const now = this.clock.now();
+    const todayDate = this.clock.todayDateString(now);
+    const updatedAppStates = { ...this.state.appStates };
+
+    for (const appId of newRule.appIds) {
+      if (!updatedAppStates[appId]) {
+        const newAppState: AppState = {
+          appId,
+          ruleId: newRule.id,
+          usedTodaySeconds: 0,
+          usageDate: todayDate,
+        };
+        await this.appStateRepo.save(newAppState);
+        updatedAppStates[appId] = newAppState;
+      }
+    }
+
+    this.state = {
+      ...this.state,
+      rules: [...this.state.rules, newRule],
+      appStates: updatedAppStates,
+    };
+    this.notify();
+    return ok(newRule);
+  }
+
+  /**
+   * Updates an existing rule with asymmetric change policy enforcement.
+   * Tightening changes apply immediately; loosening changes become pending until next local midnight.
+   */
+  async updateRule(
+    ruleId: string,
+    input: RuleInput
+  ): Promise<Result<Rule, readonly RuleValidationError[] | Error>> {
+    const existingRule = this.state.rules.find((r) => r.id === ruleId);
+    if (!existingRule) {
+      return err(new Error(`Rule not found with id: ${ruleId}`));
+    }
+
+    const validation = validateRuleInput(input, this.state.rules, ruleId);
+    if (!validation.ok) {
+      return err(validation.error);
+    }
+
+    const validated = validation.value;
+    const nextMidnight = this.clock.nextLocalMidnight(this.clock.now());
+    const splitResult = applyChangePolicy(existingRule, validated, nextMidnight);
+    const updatedRule = splitResult.updatedRule;
+
+    const saveResult = await this.ruleRepo.save(updatedRule);
+    if (!saveResult.ok) {
+      return err(saveResult.error);
+    }
+
+    const now = this.clock.now();
+    const todayDate = this.clock.todayDateString(now);
+    const updatedAppStates = { ...this.state.appStates };
+
+    for (const appId of updatedRule.appIds) {
+      if (!updatedAppStates[appId]) {
+        const newAppState: AppState = {
+          appId,
+          ruleId: updatedRule.id,
+          usedTodaySeconds: 0,
+          usageDate: todayDate,
+        };
+        await this.appStateRepo.save(newAppState);
+        updatedAppStates[appId] = newAppState;
+      }
+    }
+
+    this.state = {
+      ...this.state,
+      rules: this.state.rules.map((r) => (r.id === ruleId ? updatedRule : r)),
+      appStates: updatedAppStates,
+    };
+    this.notify();
+    return ok(updatedRule);
   }
 }

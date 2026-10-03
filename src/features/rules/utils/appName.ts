@@ -9,6 +9,25 @@ export interface AppMetadata {
   readonly brandColor: string;
 }
 
+export interface AppOption extends AppMetadata {
+  readonly packageId: string;
+}
+
+export const POPULAR_APPS: readonly AppOption[] = [
+  { packageId: 'com.instagram.android', name: 'Instagram', icon: '📸', brandColor: '#E1306C' },
+  { packageId: 'com.google.android.youtube', name: 'YouTube', icon: '▶️', brandColor: '#FF0000' },
+  { packageId: 'com.reddit.frontpage', name: 'Reddit', icon: '🤖', brandColor: '#FF4500' },
+  { packageId: 'com.zhiliaoapp.musically', name: 'TikTok', icon: '🎵', brandColor: '#111827' },
+  { packageId: 'com.twitter.android', name: 'X (Twitter)', icon: '🐦', brandColor: '#1DA1F2' },
+  { packageId: 'com.facebook.katana', name: 'Facebook', icon: '👥', brandColor: '#1877F2' },
+  { packageId: 'com.snapchat.android', name: 'Snapchat', icon: '👻', brandColor: '#D97706' },
+  { packageId: 'com.netflix.mediaclient', name: 'Netflix', icon: '🎬', brandColor: '#E50914' },
+  { packageId: 'com.pinterest', name: 'Pinterest', icon: '📌', brandColor: '#E60023' },
+  { packageId: 'com.twitch.android.app', name: 'Twitch', icon: '🎮', brandColor: '#9146FF' },
+  { packageId: 'com.linkedin.android', name: 'LinkedIn', icon: '💼', brandColor: '#0A66C2' },
+  { packageId: 'com.discord', name: 'Discord', icon: '💬', brandColor: '#5865F2' },
+];
+
 const KNOWN_APPS: Record<string, AppMetadata> = {
   'com.instagram.android': {
     name: 'Instagram',
