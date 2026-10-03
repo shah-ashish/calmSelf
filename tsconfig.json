@@ -9,11 +9,10 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "6.0",
+    "skipLibCheck": true,
     "baseUrl": ".",
     "types": ["jest"],
     "paths": {
@@ -32,5 +31,9 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

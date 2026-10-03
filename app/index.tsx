@@ -2,28 +2,40 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { colors, radii, shadows, spacing, typography } from '../src/ui/theme';
 
+import { usePermissions } from '../src/features/permissions';
+
 export default function HomeScreen() {
   const router = useRouter();
+  const { allGranted } = usePermissions();
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Mindful Welcome Banner */}
       <View style={styles.welcomeBanner}>
-        <View style={styles.bannerBadge}>
-          <Text style={styles.bannerBadgeText}>Mindful Pause</Text>
+        <View style={[styles.bannerBadge, !allGranted && styles.bannerBadgePending]}>
+          <Text style={[styles.bannerBadgeText, !allGranted && styles.bannerBadgeTextPending]}>
+            {allGranted ? '🛡️ Safeguards Active' : '⚠️ Action Needed'}
+          </Text>
         </View>
         <Text style={styles.welcomeTitle}>Welcome back, Ashish</Text>
         <Text style={styles.welcomeSubtitle}>
-          Your digital wellbeing safeguards are active and protecting your focus.
+          {allGranted
+            ? 'Your mindful safeguards are active and protecting your digital focus.'
+            : 'Grant permissions to enable overlay messages and automatic focus limits.'}
         </Text>
 
         <TouchableOpacity
-          style={styles.permissionPrompt}
+          style={[styles.permissionPrompt, !allGranted && styles.permissionPromptPending]}
           onPress={() => router.push('/onboarding/permissions')}
           activeOpacity={0.8}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={allGranted ? 'View system permissions, all active' : 'Permissions needed, tap to setup'}
         >
-          <Text style={styles.permissionPromptText}>
-            ⚙️ Check System Permissions & Settings
+          <Text style={[styles.permissionPromptText, !allGranted && styles.permissionPromptTextPending]}>
+            {allGranted
+              ? '⚙️ System Permissions: All Active'
+              : '👉 Tap to Enable Required Permissions'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -93,6 +105,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  bannerBadgePending: {
+    backgroundColor: colors.accentAmberLight,
+  },
+  bannerBadgeTextPending: {
+    color: colors.accentAmber,
+  },
   welcomeTitle: {
     ...typography.h2,
     marginBottom: spacing.xs,
@@ -107,10 +125,19 @@ const styles = StyleSheet.create({
     padding: spacing.sm + 4,
     alignItems: 'center',
   },
+  permissionPromptPending: {
+    backgroundColor: colors.accentAmberLight,
+    borderWidth: 1,
+    borderColor: colors.accentAmber,
+  },
   permissionPromptText: {
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
+  },
+  permissionPromptTextPending: {
+    color: colors.textPrimary,
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
