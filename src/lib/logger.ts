@@ -6,7 +6,8 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 class AppLogger {
-  private level: LogLevel = __DEV__ ? 'debug' : 'info';
+  private level: LogLevel =
+    typeof __DEV__ !== 'undefined' && Boolean(__DEV__) ? 'debug' : 'info';
 
   debug(message: string, context?: Record<string, unknown>): void {
     if (this.level === 'debug') {
