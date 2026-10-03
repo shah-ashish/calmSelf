@@ -18,6 +18,8 @@ module.exports = {
   collectCoverageFrom: [
     'src/domain/**/*.{ts,tsx}',
     'src/data/**/*.{ts,tsx}',
+    'src/platform/**/*.{ts,tsx}',
+    'src/features/permissions/PermissionsController.ts',
     '!src/**/index.ts',
     '!src/**/interface.ts',
     '!src/**/interfaces.ts',
