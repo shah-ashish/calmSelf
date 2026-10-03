@@ -19,7 +19,8 @@
     },
     "plugins": [
       "expo-dev-client",
-      "expo-app-blocker"
+      "expo-app-blocker",
+      "expo-router"
     ],
     "extra": {
       "eas": {

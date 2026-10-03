@@ -1,0 +1,33 @@
+/**
+ * Application Defaults and Limit Constants
+ * Centralized constant definitions per Section 5 of Project Spec.
+ */
+
+export const LIMITS = {
+  MIN_TIME_LIMIT_MINUTES: 1,
+  MAX_TIME_LIMIT_MINUTES: 1440,
+  DEFAULT_TIME_LIMIT_MINUTES: 30,
+
+  MIN_CONTINUE_DELAY_SECONDS: 0,
+  MAX_CONTINUE_DELAY_SECONDS: 60,
+  DEFAULT_CONTINUE_DELAY_SECONDS: 10,
+
+  MIN_BLOCK_DURATION_MINUTES: 5,
+  MAX_BLOCK_DURATION_MINUTES: 1440,
+  DEFAULT_BLOCK_DURATION_MINUTES: 60,
+
+  MAX_RULE_MESSAGES: 10,
+  MAX_MESSAGE_LENGTH: 300,
+  MIN_MESSAGE_LENGTH: 1,
+} as const;
+
+export const STORAGE = {
+  CURRENT_SCHEMA_VERSION: 1,
+  RULE_STORAGE_KEY: '@calm_self:rules_v1',
+  APP_STATE_STORAGE_KEY: '@calm_self:app_state_v1',
+} as const;
+
+export const POLLING = {
+  WATCHER_INTERVAL_MS: 500,
+  INTERCEPT_DRAIN_INTERVAL_MS: 2000,
+} as const;
