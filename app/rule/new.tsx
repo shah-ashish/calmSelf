@@ -2,11 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { StyleSheet, View, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useRules, RuleForm } from '../../src/features/rules';
+import { usePermissions } from '../../src/features/permissions';
 import type { RuleInput, RuleValidationError } from '../../src/domain/validation';
 import { colors } from '../../src/ui/theme';
 
 export default function NewRuleScreen() {
   const { createRule, getAssignedApps } = useRules();
+  const { allGranted } = usePermissions();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const assignedAppsMap = useMemo(() => getAssignedApps(), [getAssignedApps]);
@@ -27,6 +29,25 @@ export default function NewRuleScreen() {
         Alert.alert('Unable to Save Rule', errorMsg);
         setIsSubmitting(false);
         return false;
+      }
+
+      if (!allGranted) {
+        Alert.alert(
+          'Rule Created — Permissions Needed',
+          'To monitor apps and show mindful pauses, Android requires "Display Over Other Apps" and "Usage Access" permissions.',
+          [
+            {
+              text: 'Done',
+              style: 'cancel',
+              onPress: () => router.replace('/'),
+            },
+            {
+              text: 'Enable Permissions',
+              onPress: () => router.replace('/onboarding/permissions'),
+            },
+          ]
+        );
+        return true;
       }
 
       router.replace('/');
@@ -55,6 +76,7 @@ export default function NewRuleScreen() {
         assignedAppsMap={assignedAppsMap}
         onSave={handleSave}
         onCancel={handleCancel}
+        onOpenPermissions={() => router.push('/onboarding/permissions')}
         isSubmitting={isSubmitting}
       />
     </View>

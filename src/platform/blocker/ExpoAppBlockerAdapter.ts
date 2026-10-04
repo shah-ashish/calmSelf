@@ -8,6 +8,7 @@ import {
   stopMonitoring,
   configureAndroid,
   drainPendingIntercepts,
+  temporaryUnlock as nativeTemporaryUnlock,
 } from 'expo-app-blocker';
 import type {
   BlockerAdapter,
@@ -124,6 +125,14 @@ export class ExpoAppBlockerAdapter implements BlockerAdapter {
       stopMonitoring();
     } catch (error) {
       logger.error('Failed to stop native background monitoring service', error);
+    }
+  }
+
+  async temporaryUnlock(durationMinutes: number): Promise<void> {
+    try {
+      await nativeTemporaryUnlock(Math.max(1, durationMinutes));
+    } catch (error) {
+      logger.error('Failed to grant temporary unlock to native blocker', error);
     }
   }
 }

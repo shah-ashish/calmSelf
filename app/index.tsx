@@ -98,7 +98,7 @@ export default function HomeScreen() {
         <Text style={styles.welcomeSubtitle}>
           {allGranted
             ? 'Your mindful safeguards are active and protecting your digital wellbeing.'
-            : 'Grant permissions to enable overlay messages and automatic focus limits.'}
+            : 'Required for enforcement: Calm Self needs "Display Over Apps" & "Usage Access" to detect when protected apps open.'}
         </Text>
 
         <TouchableOpacity
@@ -114,7 +114,7 @@ export default function HomeScreen() {
           <Text style={[styles.permissionPromptText, !allGranted && styles.permissionPromptTextPending]}>
             {allGranted
               ? '⚙️ System Permissions: All Active'
-              : '👉 Tap to Enable Required Permissions'}
+              : '👉 Tap to Enable Android Permissions'}
           </Text>
         </TouchableOpacity>
       </View>

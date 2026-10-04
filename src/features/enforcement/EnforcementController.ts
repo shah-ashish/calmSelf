@@ -220,6 +220,14 @@ export class EnforcementController {
   }
 
   /**
+   * Temporarily suppresses blocking on Android native watcher for durationMinutes.
+   * After durationMinutes of foreground use, native watcher automatically re-blocks.
+   */
+  async temporaryUnlock(durationMinutes: number): Promise<void> {
+    await this.blocker.temporaryUnlock(durationMinutes);
+  }
+
+  /**
    * Watchdog self-healing health check.
    * Verifies blocker permissions, rule synchronization consistency, and drains pending intercepts.
    * Automatically repairs out-of-sync package lists or dead background monitoring services.

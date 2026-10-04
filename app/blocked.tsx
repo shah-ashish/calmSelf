@@ -25,7 +25,7 @@ export default function BlockedScreen() {
   const meta = useMemo(() => resolveAppMetadata(packageName), [packageName]);
   const displayName = appNameParam || meta.name;
 
-  const { evaluateAppOpen } = useEnforcement();
+  const { evaluateAppOpen, temporaryUnlock } = useEnforcement();
   const [evaluation, setEvaluation] = useState<InterceptEvaluation | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(0);
@@ -83,10 +83,19 @@ export default function BlockedScreen() {
     }
   }, []);
 
-  const handleContinue = useCallback(() => {
-    // Return to home screen or dismiss overlay
-    router.replace('/');
-  }, []);
+  const handleContinue = useCallback(async () => {
+    // Grant temporary unlock on native watcher for the rule's limit
+    if (evaluation?.rule) {
+      const remainingMinutes = Math.max(1, evaluation.rule.limitMinutes);
+      await temporaryUnlock(remainingMinutes);
+    }
+    // Return to the protected app
+    if (BackHandler.exitApp) {
+      BackHandler.exitApp();
+    } else {
+      router.replace('/');
+    }
+  }, [evaluation, temporaryUnlock]);
 
   if (loading) {
     return (

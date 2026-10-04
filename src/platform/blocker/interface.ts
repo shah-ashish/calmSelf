@@ -36,4 +36,5 @@ export interface BlockerAdapter {
   drainPendingIntercepts(): Promise<readonly InterceptEvent[]>;
   startService(): Promise<void>;
   stopService(): Promise<void>;
+  temporaryUnlock(durationMinutes: number): Promise<void>;
 }

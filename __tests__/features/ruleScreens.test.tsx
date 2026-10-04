@@ -70,8 +70,24 @@ jest.mock('react-native', () => {
     Alert: {
       alert: jest.fn(),
     },
+    Image: (props: Record<string, unknown>) =>
+      ReactActual.createElement('Image', props, null),
   };
 });
+
+jest.mock('@/features/permissions', () => ({
+  usePermissions: () => ({
+    allGranted: true,
+    status: {
+      overlayGranted: true,
+      usageAccessGranted: true,
+      notificationsGranted: true,
+    },
+    checkPermissions: jest.fn().mockResolvedValue(true),
+    requestOverlay: jest.fn(),
+    requestUsageAccess: jest.fn(),
+  }),
+}));
 
 // Import screens after mocks
 import NewRuleScreen from '../../app/rule/new';

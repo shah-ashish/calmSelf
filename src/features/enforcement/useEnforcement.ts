@@ -10,6 +10,7 @@ export interface UseEnforcementResult {
   readonly recordAppUsage: (packageName: string, elapsedSeconds: number) => Promise<unknown>;
   readonly drainIntercepts: () => Promise<number>;
   readonly healthCheck: () => Promise<HealthCheckResult>;
+  readonly temporaryUnlock: (durationMinutes: number) => Promise<void>;
 }
 
 export function useEnforcement(customController?: EnforcementController): UseEnforcementResult {
@@ -49,6 +50,13 @@ export function useEnforcement(customController?: EnforcementController): UseEnf
     return await controller.healthCheck();
   }, [controller]);
 
+  const temporaryUnlock = useCallback(
+    async (durationMinutes: number) => {
+      await controller.temporaryUnlock(durationMinutes);
+    },
+    [controller]
+  );
+
   return {
     state,
     syncRulesToBlocker,
@@ -56,5 +64,6 @@ export function useEnforcement(customController?: EnforcementController): UseEnf
     recordAppUsage,
     drainIntercepts,
     healthCheck,
+    temporaryUnlock,
   };
 }

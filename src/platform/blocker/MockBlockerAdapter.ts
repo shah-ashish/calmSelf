@@ -68,6 +68,10 @@ export class MockBlockerAdapter implements BlockerAdapter {
     this.serviceRunning = false;
   }
 
+  async temporaryUnlock(_durationMinutes: number): Promise<void> {
+    // Mock implementation
+  }
+
   // Test helper methods
   setOverlayPermission(granted: boolean): void {
     this.permissions = { ...this.permissions, overlayGranted: granted };

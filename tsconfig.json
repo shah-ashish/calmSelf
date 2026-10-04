@@ -14,16 +14,34 @@
     "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "baseUrl": ".",
-    "types": ["jest"],
+    "types": [
+      "jest"
+    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@/domain/*": ["./src/domain/*"],
-      "@/data/*": ["./src/data/*"],
-      "@/platform/*": ["./src/platform/*"],
-      "@/features/*": ["./src/features/*"],
-      "@/ui/*": ["./src/ui/*"],
-      "@/lib/*": ["./src/lib/*"],
-      "@/config/*": ["./src/config/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/domain/*": [
+        "./src/domain/*"
+      ],
+      "@/data/*": [
+        "./src/data/*"
+      ],
+      "@/platform/*": [
+        "./src/platform/*"
+      ],
+      "@/features/*": [
+        "./src/features/*"
+      ],
+      "@/ui/*": [
+        "./src/ui/*"
+      ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
+      "@/config/*": [
+        "./src/config/*"
+      ]
     }
   },
   "include": [

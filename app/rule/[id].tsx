@@ -100,6 +100,7 @@ export default function EditRuleScreen() {
         assignedAppsMap={assignedAppsMap}
         onSave={handleSave}
         onCancel={handleCancel}
+        onOpenPermissions={() => router.push('/onboarding/permissions')}
         isSubmitting={isSubmitting}
       />
     </View>

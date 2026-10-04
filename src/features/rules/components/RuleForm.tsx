@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import type { Rule } from '@/domain/types';
 import type { RuleInput } from '@/domain/validation';
@@ -21,12 +23,16 @@ import {
   classifyBlockDurationChange,
   classifyAppListChanges,
 } from '@/domain/changePolicy';
+import { getDefaultBlockerAdapter } from '@/features/permissions/defaultAdapter';
+import { usePermissions } from '@/features/permissions';
+import type { InstalledAppInfo } from '@/platform/blocker/interface';
 
 export interface RuleFormProps {
   readonly initialRule?: Rule;
   readonly assignedAppsMap?: Map<string, string>;
   readonly onSave: (input: RuleInput) => Promise<boolean>;
   readonly onCancel: () => void;
+  readonly onOpenPermissions?: () => void;
   readonly isSubmitting?: boolean;
 }
 
@@ -47,9 +53,11 @@ export function RuleForm({
   assignedAppsMap = new Map(),
   onSave,
   onCancel,
+  onOpenPermissions,
   isSubmitting = false,
 }: RuleFormProps) {
   const isEditing = Boolean(initialRule);
+  const { allGranted } = usePermissions();
 
   // Form State
   const [messages, setMessages] = useState<string[]>(
@@ -67,6 +75,79 @@ export function RuleForm({
   const [blockMinutes, setBlockMinutes] = useState<number>(
     initialRule?.blockMinutes ?? LIMITS.DEFAULT_BLOCK_DURATION_MINUTES
   );
+
+  // Dynamic installed apps state
+  const [installedApps, setInstalledApps] = useState<readonly InstalledAppInfo[]>([]);
+  const [loadingApps, setLoadingApps] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAllApps, setShowAllApps] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchApps() {
+      try {
+        const adapter = getDefaultBlockerAdapter();
+        const apps = await adapter.getInstalledApps();
+        if (isMounted && apps.length > 0) {
+          setInstalledApps(apps);
+        }
+      } catch {
+        // Fallback gracefully to default popular apps
+      } finally {
+        if (isMounted) {
+          setLoadingApps(false);
+        }
+      }
+    }
+    void fetchApps();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const installedAppsMap = useMemo(() => {
+    const map = new Map<string, InstalledAppInfo>();
+    for (const app of installedApps) {
+      map.set(app.packageName, app);
+    }
+    return map;
+  }, [installedApps]);
+
+  const availableApps = useMemo(() => {
+    if (installedApps.length > 0) {
+      return installedApps.map((app) => ({
+        packageId: app.packageName,
+        name: app.name,
+        iconBase64: app.iconBase64 ?? null,
+        icon: resolveAppMetadata(app.packageName).icon,
+      }));
+    }
+    return POPULAR_APPS.map((app) => ({
+      packageId: app.packageId,
+      name: app.name,
+      icon: app.icon,
+      iconBase64: null,
+    }));
+  }, [installedApps]);
+
+  const filteredApps = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      return availableApps;
+    }
+    return availableApps.filter(
+      (app) =>
+        app.name.toLowerCase().includes(q) ||
+        app.packageId.toLowerCase().includes(q)
+    );
+  }, [availableApps, searchQuery]);
+
+  const displayedApps = useMemo(() => {
+    if (searchQuery.trim().length > 0 || showAllApps || filteredApps.length <= 12) {
+      return filteredApps;
+    }
+    return filteredApps.slice(0, 12);
+  }, [filteredApps, searchQuery, showAllApps]);
 
   // Custom app package input
   const [customPackage, setCustomPackage] = useState<string>('');
@@ -93,12 +174,14 @@ export function RuleForm({
 
     const { removed } = classifyAppListChanges(initialRule.appIds, selectedApps);
     if (removed.length > 0) {
-      const removedNames = removed.map((id) => resolveAppMetadata(id).name).join(', ');
+      const removedNames = removed
+        .map((id) => installedAppsMap.get(id)?.name ?? resolveAppMetadata(id).name)
+        .join(', ');
       changes.push(`Removed protected app(s): ${removedNames}`);
     }
 
     return changes.length > 0 ? changes : null;
-  }, [initialRule, limitMinutes, delaySeconds, blockMinutes, selectedApps]);
+  }, [initialRule, limitMinutes, delaySeconds, blockMinutes, selectedApps, installedAppsMap]);
 
   // Messages handling
   const handleUpdateMessage = useCallback((text: string, index: number) => {
@@ -288,6 +371,27 @@ export function RuleForm({
           </Text>
         </View>
 
+        {/* Permission Warning Banner */}
+        {!allGranted && (
+          <TouchableOpacity
+            style={styles.permissionWarningBanner}
+            onPress={onOpenPermissions}
+            activeOpacity={0.85}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Permissions required for app interception. Tap to enable."
+          >
+            <Text style={styles.permissionWarningIcon}>⚠️</Text>
+            <View style={styles.permissionWarningTextCol}>
+              <Text style={styles.permissionWarningTitle}>Permissions Required to Intercept</Text>
+              <Text style={styles.permissionWarningSubtitle}>
+                Calm Self needs &quot;Display Over Apps&quot; and &quot;Usage Access&quot; to monitor apps and show pauses. Tap to enable.
+              </Text>
+            </View>
+            <Text style={styles.permissionWarningArrow}>→</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Asymmetric Change Policy Banner (if loosening) */}
         {looseningInfo && (
           <View style={styles.looseningBanner} accessible accessibilityRole="alert">
@@ -323,9 +427,44 @@ export function RuleForm({
 
           {errors.apps && <Text style={styles.errorText}>{errors.apps}</Text>}
 
-          {/* Popular Apps Grid */}
+          {/* Search Installed Apps Bar */}
+          <View style={styles.appSearchContainer}>
+            <TextInput
+              style={styles.appSearchInput}
+              placeholder="🔍 Search installed apps..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessible
+              accessibilityLabel="Search installed apps"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearSearchBtn}
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <Text style={styles.clearSearchText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Loading Indicator */}
+          {loadingApps && (
+            <View style={styles.loadingAppsRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.loadingAppsText}>Scanning installed apps on device...</Text>
+            </View>
+          )}
+
+          {/* Installed Apps Grid */}
           <View style={styles.appsGrid}>
-            {POPULAR_APPS.map((app) => {
+            {displayedApps.map((app) => {
               const isSelected = selectedApps.includes(app.packageId);
               const isAssignedElsewhere = assignedAppsMap.has(app.packageId);
 
@@ -344,7 +483,14 @@ export function RuleForm({
                   accessibilityState={{ checked: isSelected, disabled: isAssignedElsewhere }}
                   accessibilityLabel={`${app.name} app${isAssignedElsewhere ? ', assigned to another rule' : ''}`}
                 >
-                  <Text style={styles.appChipIcon}>{app.icon}</Text>
+                  {app.iconBase64 ? (
+                    <Image
+                      source={{ uri: `data:image/png;base64,${app.iconBase64}` }}
+                      style={styles.appChipImage}
+                    />
+                  ) : (
+                    <Text style={styles.appChipIcon}>{app.icon ?? '📱'}</Text>
+                  )}
                   <Text
                     style={[
                       styles.appChipName,
@@ -364,6 +510,30 @@ export function RuleForm({
               );
             })}
           </View>
+
+          {/* No results message */}
+          {filteredApps.length === 0 && !loadingApps && (
+            <Text style={styles.emptySearchText}>
+              No apps found matching &quot;{searchQuery}&quot;
+            </Text>
+          )}
+
+          {/* Show more/fewer apps toggle */}
+          {filteredApps.length > 12 && !searchQuery.trim() && (
+            <TouchableOpacity
+              style={styles.toggleMoreAppsBtn}
+              onPress={() => setShowAllApps((prev) => !prev)}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={showAllApps ? 'Show fewer apps' : 'Show all installed apps'}
+            >
+              <Text style={styles.toggleMoreAppsText}>
+                {showAllApps
+                  ? 'Show fewer apps ▲'
+                  : `Show all ${filteredApps.length} apps on device ▼`}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Custom Package Input */}
           <View style={styles.customAppContainer}>
@@ -403,18 +573,29 @@ export function RuleForm({
             </Text>
             <View style={styles.selectedChipsWrap}>
               {selectedApps.map((pkg) => {
+                const installed = installedAppsMap.get(pkg);
                 const meta = resolveAppMetadata(pkg);
+                const name = installed?.name ?? meta.name;
+                const iconBase64 = installed?.iconBase64;
+
                 return (
                   <View key={pkg} style={styles.selectedSummaryChip}>
-                    <Text style={styles.summaryChipIcon}>{meta.icon}</Text>
-                    <Text style={styles.summaryChipText}>{meta.name}</Text>
+                    {iconBase64 ? (
+                      <Image
+                        source={{ uri: `data:image/png;base64,${iconBase64}` }}
+                        style={styles.summaryChipImage}
+                      />
+                    ) : (
+                      <Text style={styles.summaryChipIcon}>{meta.icon}</Text>
+                    )}
+                    <Text style={styles.summaryChipText}>{name}</Text>
                     {selectedApps.length > 1 && (
                       <TouchableOpacity
                         onPress={() => toggleAppSelection(pkg)}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         accessible
                         accessibilityRole="button"
-                        accessibilityLabel={`Remove ${meta.name}`}
+                        accessibilityLabel={`Remove ${name}`}
                       >
                         <Text style={styles.summaryChipRemove}>✕</Text>
                       </TouchableOpacity>
@@ -815,6 +996,43 @@ const styles = StyleSheet.create({
     ...typography.bodyMuted,
     lineHeight: 20,
   },
+  permissionWarningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  permissionWarningIcon: {
+    fontSize: 22,
+    marginRight: spacing.sm,
+  },
+  permissionWarningTextCol: {
+    flex: 1,
+  },
+  permissionWarningTitle: {
+    ...typography.h3,
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '700',
+  },
+  permissionWarningSubtitle: {
+    ...typography.caption,
+    fontSize: 12,
+    color: '#78350F',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  permissionWarningArrow: {
+    fontSize: 18,
+    color: '#92400E',
+    fontWeight: '700',
+    marginLeft: spacing.xs,
+  },
   looseningBanner: {
     backgroundColor: colors.accentAmberLight,
     borderColor: colors.accentAmber,
@@ -893,11 +1111,71 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   // App Selection
+  appSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundSubtle,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  appSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm,
+  },
+  clearSearchBtn: {
+    padding: spacing.xs,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  loadingAppsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  loadingAppsText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
   appsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  appChipImage: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    marginRight: spacing.xs,
+  },
+  emptySearchText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+    fontStyle: 'italic',
+  },
+  toggleMoreAppsBtn: {
+    alignSelf: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  toggleMoreAppsText: {
+    ...typography.caption,
+    color: colors.primaryDark,
+    fontWeight: '600',
   },
   appChip: {
     flexDirection: 'row',
@@ -1012,6 +1290,12 @@ const styles = StyleSheet.create({
   },
   summaryChipIcon: {
     fontSize: 12,
+    marginRight: 4,
+  },
+  summaryChipImage: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
     marginRight: 4,
   },
   summaryChipText: {

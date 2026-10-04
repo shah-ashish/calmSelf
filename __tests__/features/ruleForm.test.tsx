@@ -29,6 +29,13 @@ jest.mock('react-native', () => {
     Alert: {
       alert: jest.fn(),
     },
+    Image: (props: Record<string, unknown>) =>
+      ReactActual.createElement('Image', props, null),
+    ActivityIndicator: (props: Record<string, unknown>) =>
+      ReactActual.createElement('ActivityIndicator', props, null),
+    AppState: {
+      addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+    },
   };
 });
 

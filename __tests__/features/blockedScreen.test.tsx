@@ -16,6 +16,7 @@ jest.mock('expo-router', () => ({
 }));
 
 const mockEvaluateAppOpen = jest.fn();
+const mockTemporaryUnlock = jest.fn();
 
 jest.mock('@/features/enforcement', () => ({
   useEnforcement: () => ({
@@ -23,6 +24,7 @@ jest.mock('@/features/enforcement', () => ({
     syncRulesToBlocker: jest.fn(),
     recordAppUsage: jest.fn(),
     drainIntercepts: jest.fn(),
+    temporaryUnlock: mockTemporaryUnlock,
     state: {
       monitoringActive: true,
       blockedPackages: ['com.instagram.android'],
@@ -171,11 +173,12 @@ describe('BlockedScreen (Mindful Intervention & Lock Screen)', () => {
     expect(continueBtn).toBeDefined();
     expect(continueBtn?.props.accessibilityState?.disabled).toBe(false);
 
-    // Pressing continue navigates
-    act(() => {
-      continueBtn?.props.onPress();
+    // Pressing continue unlocks session and exits back to protected app
+    await act(async () => {
+      await continueBtn?.props.onPress();
     });
-    expect(mockReplace).toHaveBeenCalledWith('/');
+    expect(mockTemporaryUnlock).toHaveBeenCalledWith(30);
+    expect(mockExitApp).toHaveBeenCalled();
   });
 
   it('handles Step Away action by calling BackHandler.exitApp', async () => {
