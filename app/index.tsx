@@ -94,10 +94,10 @@ export default function HomeScreen() {
             {allGranted ? '🛡️ Safeguards Active' : '⚠️ Action Needed'}
           </Text>
         </View>
-        <Text style={styles.welcomeTitle}>Welcome back, Ashish</Text>
+        <Text style={styles.welcomeTitle}>Mindful Focus</Text>
         <Text style={styles.welcomeSubtitle}>
           {allGranted
-            ? 'Your mindful safeguards are active and protecting your digital focus.'
+            ? 'Your mindful safeguards are active and protecting your digital wellbeing.'
             : 'Grant permissions to enable overlay messages and automatic focus limits.'}
         </Text>
 
