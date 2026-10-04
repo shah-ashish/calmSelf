@@ -52,24 +52,37 @@ export function evaluateEnforcement(
   }
 
   // 2. Normalize usage for today's local date
-  const appState = normalizeAppStateForDate(rawAppState, now);
+  let appState = normalizeAppStateForDate(rawAppState, now);
+
+  const limitSeconds = rule.limitMinutes * 60;
+
+  // If a lock has expired and usedTodaySeconds < limitSeconds (e.g. carried over across midnight),
+  // clear lockedUntil so a future limit breach today can lock properly.
+  if (
+    appState.lockedUntil !== undefined &&
+    appState.lockedUntil <= now &&
+    appState.usedTodaySeconds < limitSeconds
+  ) {
+    appState = {
+      ...appState,
+      lockedUntil: undefined,
+    };
+  }
 
   // 3. Check for active lock
   if (appState.lockedUntil !== undefined) {
     if (appState.lockedUntil > now) {
-      // Lock is still active
+      // Lock is actively in effect
       return {
         type: 'lock',
         lockedUntil: appState.lockedUntil,
       };
     }
-    // Lock has expired; continue to limit evaluation
-  }
-
-  // 4. Check if daily time limit has been reached
-  const limitSeconds = rule.limitMinutes * 60;
-  if (appState.usedTodaySeconds >= limitSeconds) {
-    // Limit reached or exceeded! Calculate lock expiration
+    // Cooldown lock was already served for today's limit breach!
+    // Fall through to step 5 to show mindful message and pause delay,
+    // avoiding trapping the user in an inescapable same-day lock loop.
+  } else if (appState.usedTodaySeconds >= limitSeconds) {
+    // 4. Daily time limit has been reached for the first time today
     const lockDurationMs = rule.blockMinutes * 60 * 1000;
     const lockUntil = now + lockDurationMs;
 
@@ -79,7 +92,7 @@ export function evaluateEnforcement(
     };
   }
 
-  // 5. Under limit: Show mindful intervention message with configured delay
+  // 5. Under limit or served cooldown: Show mindful intervention message with configured delay
   const messageCount = rule.messages.length;
   let chosenMessage = 'Take a mindful pause.';
 

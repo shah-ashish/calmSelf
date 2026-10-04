@@ -1,17 +1,13 @@
-import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../src/ui/theme';
-import { useEnforcement } from '../src/features/enforcement';
+import { useAppLifecycle } from '../src/features/lifecycle';
 
 export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
-  const { syncRulesToBlocker } = useEnforcement();
+  useAppLifecycle();
 
-  useEffect(() => {
-    void syncRulesToBlocker();
-  }, [syncRulesToBlocker]);
   return (
     <>
       <StatusBar style="dark" />

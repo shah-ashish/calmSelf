@@ -9,6 +9,7 @@ import type {
   EnforcementState,
   EnforcementChangeListener,
   InterceptEvaluation,
+  HealthCheckResult,
 } from './types';
 
 export class EnforcementController {
@@ -216,5 +217,82 @@ export class EnforcementController {
       this.notify();
     }
     return intercepts.length;
+  }
+
+  /**
+   * Watchdog self-healing health check.
+   * Verifies blocker permissions, rule synchronization consistency, and drains pending intercepts.
+   * Automatically repairs out-of-sync package lists or dead background monitoring services.
+   */
+  async healthCheck(): Promise<HealthCheckResult> {
+    const issues: string[] = [];
+    let repaired = false;
+
+    // 1. Drain pending intercepts
+    try {
+      await this.drainIntercepts();
+    } catch (err) {
+      logger.error('Watchdog failed to drain intercepts', err);
+      issues.push('Failed to drain pending intercepts');
+    }
+
+    // 2. Verify platform permissions
+    let perms;
+    try {
+      perms = await this.blocker.checkPermissions();
+      if (!perms.overlayGranted) {
+        issues.push('Overlay permission not granted');
+      }
+      if (!perms.usageAccessGranted) {
+        issues.push('Usage access permission not granted');
+      }
+    } catch (err) {
+      logger.error('Watchdog failed to check permissions', err);
+      issues.push('Failed to check permissions');
+      return { isHealthy: false, issues, repaired: false };
+    }
+
+    // 3. Verify rule synchronization
+    const rulesResult = await this.ruleRepo.getAll();
+    const rules = rulesResult.ok ? rulesResult.value : [];
+    const expectedPackagesSet = new Set<string>();
+    for (const rule of rules) {
+      if (rule.enabled) {
+        for (const appId of rule.appIds) {
+          expectedPackagesSet.add(appId);
+        }
+      }
+    }
+
+    const expectedPackages = Array.from(expectedPackagesSet).sort();
+    const currentPackages = [...this.state.blockedPackages].sort();
+    const packagesMatch =
+      expectedPackages.length === currentPackages.length &&
+      expectedPackages.every((pkg, idx) => pkg === currentPackages[idx]);
+
+    const canMonitor =
+      perms.overlayGranted && perms.usageAccessGranted && expectedPackages.length > 0;
+    const monitoringStatusMatches = this.state.monitoringActive === canMonitor;
+
+    const needsResync =
+      !packagesMatch ||
+      !monitoringStatusMatches ||
+      this.state.lastSyncedAt === null;
+
+    if (needsResync) {
+      try {
+        await this.syncRulesToBlocker();
+        repaired = true;
+      } catch (err) {
+        logger.error('Watchdog failed to resync blocker', err);
+        issues.push('Failed to resync blocker service');
+      }
+    }
+
+    return {
+      isHealthy: issues.length === 0,
+      issues,
+      repaired,
+    };
   }
 }

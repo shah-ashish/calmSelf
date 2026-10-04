@@ -349,4 +349,22 @@ export class RulesController {
     this.notify();
     return ok(updatedRule);
   }
+
+  /**
+   * Identifies configured package names across all rules that are no longer installed on the device.
+   */
+  getUninstalledApps(installedPackageNames: readonly string[]): readonly string[] {
+    const installedSet = new Set(installedPackageNames);
+    const uninstalled = new Set<string>();
+
+    for (const rule of this.state.rules) {
+      for (const appId of rule.appIds) {
+        if (!installedSet.has(appId)) {
+          uninstalled.add(appId);
+        }
+      }
+    }
+
+    return Array.from(uninstalled);
+  }
 }

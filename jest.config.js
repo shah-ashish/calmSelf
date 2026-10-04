@@ -21,6 +21,8 @@ module.exports = {
     'src/platform/**/*.{ts,tsx}',
     'src/features/permissions/PermissionsController.ts',
     'src/features/rules/**/*.{ts,tsx}',
+    'src/features/enforcement/EnforcementController.ts',
+    'src/features/lifecycle/AppLifecycleCoordinator.ts',
     '!src/features/rules/defaultRepositories.ts',
     '!src/features/rules/useRules.ts',
     '!src/**/index.ts',

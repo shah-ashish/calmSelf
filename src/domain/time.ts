@@ -35,6 +35,38 @@ export function isSameLocalDay(ms1: number, ms2: number): boolean {
 }
 
 /**
+ * Safely computes elapsed seconds between two epoch timestamps in milliseconds.
+ * Clamps negative delta (device clock drift backwards or manual clock tampering) to 0.
+ * Caps excessively large intervals to maxAllowedSeconds (default: 86,400s / 24h)
+ * to avoid runaway daily counters from unexpected gaps or device reboots.
+ */
+export function safeElapsedSeconds(
+  previousMs: number,
+  currentMs: number,
+  maxAllowedSeconds: number = 86400
+): number {
+  if (currentMs <= previousMs) {
+    return 0;
+  }
+  const deltaSeconds = Math.floor((currentMs - previousMs) / 1000);
+  return Math.min(deltaSeconds, maxAllowedSeconds);
+}
+
+/**
+ * Checks if a target timestamp is in the past or current relative to reference time.
+ */
+export function isPast(targetMs: number, referenceMs: number): boolean {
+  return targetMs <= referenceMs;
+}
+
+/**
+ * Checks if a target timestamp is strictly in the future relative to reference time.
+ */
+export function isFuture(targetMs: number, referenceMs: number): boolean {
+  return targetMs > referenceMs;
+}
+
+/**
  * Default production clock backed by system time.
  */
 export class SystemClock implements Clock {
